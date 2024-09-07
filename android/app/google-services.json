@@ -1,0 +1,90 @@
+{
+  "project_info": {
+    "project_number": "798450357422",
+    "project_id": "testing-32a29",
+    "storage_bucket": "testing-32a29.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:798450357422:android:464ceb113a657f179b893f",
+        "android_client_info": {
+          "package_name": "com.example.chat_app"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "798450357422-dhcqbt2aqfhpbuppk73l1s3u0ah2ilkk.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCdnb7LqWTmHgQNj7BXzjAucDj5dmg-NT0"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "798450357422-dhcqbt2aqfhpbuppk73l1s3u0ah2ilkk.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "798450357422-srbj1u295eemkfcv53rik3qi3u58aa93.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.example.hive"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:798450357422:android:d9070eaf5a8ea8b59b893f",
+        "android_client_info": {
+          "package_name": "com.example.hive"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "798450357422-3tbcmf5lf2fl6hh6sii7trtns6adimau.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.hive",
+            "certificate_hash": "45ec05940703d8609b951a2604f9fb8db4606d73"
+          }
+        },
+        {
+          "client_id": "798450357422-dhcqbt2aqfhpbuppk73l1s3u0ah2ilkk.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCdnb7LqWTmHgQNj7BXzjAucDj5dmg-NT0"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "798450357422-dhcqbt2aqfhpbuppk73l1s3u0ah2ilkk.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "798450357422-srbj1u295eemkfcv53rik3qi3u58aa93.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.example.hive"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

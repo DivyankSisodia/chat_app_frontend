@@ -1,6 +1,7 @@
 import 'package:chat_app/model/user_model.dart';
 import 'package:chat_app/screen/login.dart';
 import 'package:chat_app/services/auth_service.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:gap/gap.dart';
@@ -16,13 +17,25 @@ class _SignupScreenState extends State<SignupScreen> {
   String _email = '';
   String _password = '';
 
-  AuthService _authService = AuthService();
+  final AuthService _authService = AuthService();
 
   void _signup() async {
     if (_formKey.currentState!.validate()) {
       _formKey.currentState!.save();
 
-      User user = User(username: _username, email: _email, password: _password);
+      FirebaseMessaging messaging = FirebaseMessaging.instance;
+
+      NotificationSettings settings = await messaging.requestPermission();
+
+      if(settings.authorizationStatus == AuthorizationStatus.authorized) {
+        print('User granted permission');
+      } else {
+        print('User declined or has not accepted permission');
+      }
+
+      String? deviceToken = await messaging.getToken();
+
+      User user = User(username: _username, email: _email, password: _password, deviceToken: deviceToken!);
 
       try {
         final response = await _authService.signup(user);
