@@ -36,21 +36,23 @@ class ChatScreen extends ConsumerStatefulWidget {
   final String receiverId;
 
   const ChatScreen({
-    super.key,
+    Key? key,
     required this.username,
     required this.onlineStatus,
     required this.senderId,
     required this.receiverId,
-  });
+  }) : super(key: key);
 
   @override
   ConsumerState<ChatScreen> createState() => _ChatScreenState();
 }
 
-class _ChatScreenState extends ConsumerState<ChatScreen> {
+class _ChatScreenState extends ConsumerState<ChatScreen> with TickerProviderStateMixin {
   final TextEditingController _messageController = TextEditingController();
   late SocketService socketService;
   Timer? _typingTimer;
+  final List<AnimationController> _animationControllers = [];
+  final ScrollController _scrollController = ScrollController();
 
   @override
   void initState() {
@@ -64,6 +66,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     socketService.on('receive_message', (data) {
       final newMessage = Message.fromJson(data);
       ref.read(messagesProvider.notifier).addMessage(newMessage);
+      _scrollToBottom();
     });
 
     socketService.on('typing', (data) {
@@ -92,6 +95,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       ref.read(messagesProvider.notifier).addMessage(newMessage);
       _messageController.clear();
       ref.read(typingProvider.notifier).state = null;
+      _scrollToBottom();
     }
   }
 
@@ -133,6 +137,18 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     return parsed.map<Message>((json) => Message.fromJson(json)).toList();
   }
 
+  void _scrollToBottom() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (_scrollController.hasClients) {
+        _scrollController.animateTo(
+          _scrollController.position.maxScrollExtent,
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeOut,
+        );
+      }
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     final messages = ref.watch(messagesProvider);
@@ -146,78 +162,131 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
         children: [
           Expanded(
             child: ListView.builder(
-              itemCount: messages.length,
+              controller: _scrollController,
+              itemCount: messages.length + (typingUser != null ? 1 : 0),
               itemBuilder: (context, index) {
-                final message = messages[index];
-                final isCurrentUser = message.sender_id == widget.senderId;
+                if (index == messages.length && typingUser != null) {
+                  return _buildTypingIndicator(typingUser);
+                }
 
-                return Align(
-                  alignment: isCurrentUser ? Alignment.centerRight : Alignment.centerLeft,
-                  child: Container(
-                    margin: const EdgeInsets.symmetric(vertical: 5, horizontal: 10),
-                    padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 15),
-                    decoration: BoxDecoration(
-                      color: isCurrentUser ? Colors.blue : Colors.grey.shade200,
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          message.message,
-                          style: TextStyle(
-                            color: isCurrentUser ? Colors.white : Colors.black,
-                          ),
-                        ),
-                        const SizedBox(height: 5),
-                        Text(
-                          isCurrentUser ? 'You' : widget.username,
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: isCurrentUser ? Colors.white70 : Colors.black54,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                );
+                final message = messages[index];
+                return _buildMessageBubble(message);
               },
             ),
           ),
-          if (typingUser != null) ...[
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 12.0),
-              child: Align(
-                alignment: Alignment.centerLeft,
-                child: Text(
-                  '$typingUser is typing...',
-                  style: TextStyle(
-                    color: Colors.grey.shade600,
-                    fontStyle: FontStyle.italic,
-                  ),
-                ),
+          _buildMessageInput(),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTypingIndicator(String typingUser) {
+    return Align(
+      alignment: Alignment.centerLeft,
+      child: Container(
+        margin: const EdgeInsets.symmetric(vertical: 5, horizontal: 10),
+        padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 15),
+        decoration: BoxDecoration(
+          color: Colors.grey.shade200,
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              '$typingUser is typing',
+              style: TextStyle(color: Colors.black54),
+            ),
+            SizedBox(width: 5),
+            _buildTypingDots(),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildMessageBubble(Message message) {
+    final isCurrentUser = message.sender_id == widget.senderId;
+    return Align(
+      alignment: isCurrentUser ? Alignment.centerRight : Alignment.centerLeft,
+      child: Container(
+        margin: const EdgeInsets.symmetric(vertical: 5, horizontal: 10),
+        padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 15),
+        decoration: BoxDecoration(
+          color: isCurrentUser ? Colors.blue : Colors.grey.shade200,
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              message.message,
+              style: TextStyle(
+                color: isCurrentUser ? Colors.white : Colors.black,
+              ),
+            ),
+            const SizedBox(height: 5),
+            Text(
+              isCurrentUser ? 'You' : widget.username,
+              style: TextStyle(
+                fontSize: 12,
+                color: isCurrentUser ? Colors.white70 : Colors.black54,
               ),
             ),
           ],
-          Padding(
-            padding: const EdgeInsets.symmetric(vertical: 16.0, horizontal: 12.0),
-            child: Row(
-              children: [
-                Expanded(
-                  child: TextField(
-                    controller: _messageController,
-                    decoration: const InputDecoration(hintText: 'Type a message'),
-                    onChanged: (text) => _onMessageChanged(),
-                  ),
-                ),
-                IconButton(
-                  icon: const Icon(Icons.send),
-                  onPressed: _sendMessage,
-                ),
-              ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildMessageInput() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 16.0, horizontal: 12.0),
+      child: Row(
+        children: [
+          Expanded(
+            child: TextField(
+              controller: _messageController,
+              decoration: const InputDecoration(hintText: 'Type a message'),
+              onChanged: (text) => _onMessageChanged(),
             ),
           ),
+          IconButton(
+            icon: const Icon(Icons.send),
+            onPressed: _sendMessage,
+          ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildTypingDots() {
+    return SizedBox(
+      width: 20,
+      child: Row(
+        children: List.generate(3, (index) {
+          return Expanded(
+            child: FadeTransition(
+              opacity: _buildAnimationForDot(index),
+              child: const Text('.', style: TextStyle(color: Colors.black54)),
+            ),
+          );
+        }),
+      ),
+    );
+  }
+
+  Animation<double> _buildAnimationForDot(int index) {
+    final controller = AnimationController(
+      duration: const Duration(milliseconds: 300),
+      vsync: this,
+    )..repeat(reverse: true);
+    _animationControllers.add(controller);
+
+    return Tween(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(
+        parent: controller,
+        curve: Interval(index * 0.2, 1.0, curve: Curves.easeIn),
       ),
     );
   }
@@ -228,6 +297,8 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     socketService.off('typing');
     _messageController.dispose();
     _typingTimer?.cancel();
+    _animationControllers.forEach((controller) => controller.dispose());
+    _scrollController.dispose();
     super.dispose();
   }
 }

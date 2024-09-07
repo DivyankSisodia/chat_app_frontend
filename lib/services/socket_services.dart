@@ -17,7 +17,7 @@ class SocketService {
   //
 
   void _initializeSocket() {
-    socket = IO.io('https://chat-app-95gd.onrender.com', <String, dynamic>{
+    socket = IO.io('http://192.168.1.4:3000', <String, dynamic>{
       'transports': ['websocket'],
       'autoConnect': false,
     });

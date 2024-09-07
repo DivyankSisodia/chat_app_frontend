@@ -163,20 +163,25 @@
 //   }
 // }
 
+import 'dart:convert';
+
 import 'package:chat_app/controller/user-list_controller.dart';
 import 'package:chat_app/screen/signup.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:gap/gap.dart';
+import 'package:mixpanel_flutter/mixpanel_flutter.dart';
 import 'package:onesignal_flutter/onesignal_flutter.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:http/http.dart' as http;
 
 import '../services/socket_services.dart';
 import '../model/user_list_model.dart';
 import 'individual_chat_screen.dart';
 
 // New provider for real-time user status
-final userStatusProvider = StateNotifierProvider<UserStatusNotifier, Map<String, bool>>((ref) {
+final userStatusProvider =
+    StateNotifierProvider<UserStatusNotifier, Map<String, bool>>((ref) {
   return UserStatusNotifier();
 });
 
@@ -197,9 +202,11 @@ class HomeScreen extends ConsumerStatefulWidget {
   final String email;
   final String id;
   final bool onlineStatus;
+  final Mixpanel? mixpanel;
 
   const HomeScreen({
     Key? key,
+    this.mixpanel,
     required this.username,
     required this.email,
     required this.id,
@@ -213,12 +220,34 @@ class HomeScreen extends ConsumerStatefulWidget {
 class _HomeScreenState extends ConsumerState<HomeScreen> {
   SharedPreferences? prefs;
   late SocketService socketService;
+  late Mixpanel mixpanel;
 
   @override
   void initState() {
     super.initState();
     _initializePrefs();
     _initializeSocket();
+    _initializeMixpanel();
+    _trackHomeScreenOpen();
+  }
+
+  Future<void> _initializeMixpanel() async {
+    mixpanel = await Mixpanel.init("a1c4517778e7758fc30c37f30a6279d2",
+        trackAutomaticEvents: true);
+  }
+
+  Future<void> _trackHomeScreenOpen() async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    int homeScreenOpens = prefs.getInt('homeScreenOpens') ?? 0;
+    homeScreenOpens++;
+    await prefs.setInt('homeScreenOpens', homeScreenOpens);
+
+    // Track with Mixpanel
+    mixpanel.track("Home Screen Opened", properties: {
+      "open_count": homeScreenOpens,
+    });
+
+    print("Home screen opened $homeScreenOpens times");
   }
 
   Future<void> _initializePrefs() async {
@@ -238,13 +267,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     socketService.on('user_status_change', (data) {
       print('User status changed: $data');
       ref.read(userStatusProvider.notifier).updateUserStatus(
-        data['userId'],
-        data['online_status'],
-      );
+            data['userId'],
+            data['online_status'],
+          );
     });
 
     socketService.on('initial_user_list', (data) {
-      final users = (data as List).map((e) => UserListModel.fromJson(e)).toList();
+      final users =
+          (data as List).map((e) => UserListModel.fromJson(e)).toList();
       ref.read(userStatusProvider.notifier).setInitialStatus(users);
     });
   }
@@ -262,6 +292,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
+    widget.mixpanel?.track('HomeScreen');
     return Scaffold(
       appBar: AppBar(
         title: Text('Welcome ${widget.username}, ${widget.onlineStatus}'),
@@ -280,6 +311,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           mainAxisAlignment: MainAxisAlignment.center,
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
+            
             const Text(
               'Welcome to the chat app',
               style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
@@ -294,13 +326,16 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
                 return userListAsync.when(
                   data: (userList) {
-                    final filteredUsers = userList.where((user) => user.username != widget.username).toList();
+                    final filteredUsers = userList
+                        .where((user) => user.username != widget.username)
+                        .toList();
                     return ListView.builder(
                       shrinkWrap: true,
                       itemCount: filteredUsers.length,
                       itemBuilder: (context, index) {
                         final user = filteredUsers[index];
-                        final isOnline = userStatus[user.id] ?? user.online_status;
+                        final isOnline =
+                            userStatus[user.id] ?? user.online_status;
                         return ListTile(
                           onTap: () {
                             Navigator.push(
@@ -324,7 +359,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                       },
                     );
                   },
-                  loading: () => Container(height: 100, child: const CircularProgressIndicator()),
+                  loading: () => Container(
+                      height: 100, child: const CircularProgressIndicator()),
                   error: (error, stack) => Text('Error: $error'),
                 );
               }),

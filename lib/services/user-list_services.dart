@@ -6,7 +6,8 @@ import 'package:http/http.dart' as http;
 
 // https://chat-app-95gd.onrender.com
 class UserListServices {
-  final String baseUrl = "https://chat-app-95gd.onrender.com";
+  final String baseUrl = "http://192.168.1.4:3000";
+  // final String baseUrl = "https://chat-app-95gd.onrender.com";
 
   Future<List<UserListModel>> getUserList() async {
     print('getUserList');
