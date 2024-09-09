@@ -7,6 +7,8 @@ import 'package:flutter/material.dart';
 import 'package:gap/gap.dart';
 
 class SignupScreen extends StatefulWidget {
+  const SignupScreen({super.key});
+
   @override
   _SignupScreenState createState() => _SignupScreenState();
 }
@@ -43,7 +45,7 @@ class _SignupScreenState extends State<SignupScreen> {
           print('Signup successful: ${response['token']}');
         }
         Navigator.push(
-            context, MaterialPageRoute(builder: (context) => LoginScreen()));
+            context, MaterialPageRoute(builder: (context) => const LoginScreen()));
       } catch (e) {
         print('Signup failed: $e');
         ScaffoldMessenger.of(context).showSnackBar(
@@ -90,8 +92,8 @@ class _SignupScreenState extends State<SignupScreen> {
               ),
               const Gap(50),
               TextButton(onPressed: (){
-                Navigator.push(context, MaterialPageRoute(builder: (context) => LoginScreen()));
-              }, child: Text('Already have an account? Login'))
+                Navigator.push(context, MaterialPageRoute(builder: (context) => const LoginScreen()));
+              }, child: const Text('Already have an account? Login'))
             ],
           ),
         ),

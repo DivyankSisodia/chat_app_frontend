@@ -6,18 +6,14 @@ import 'package:http/http.dart' as http;
 
 // https://chat-app-95gd.onrender.com
 class UserListServices {
-  final String baseUrl = "http://192.168.1.4:3000";
+  final String baseUrl = "http://192.168.1.10:3000";
   // final String baseUrl = "https://chat-app-95gd.onrender.com";
 
   Future<List<UserListModel>> getUserList() async {
-    print('getUserList');
     final response = await http.get(Uri.parse('$baseUrl/users'));
-    print('url hit hua');
     try {
       if (response.statusCode == 200) {
-        print(response.body);
         final List<dynamic> data = jsonDecode(response.body);
-        print(data);
         return data.map((e) => UserListModel.fromJson(e)).toList();
       } else {
         print('Failed to load user list. Status code: ${response.statusCode}');

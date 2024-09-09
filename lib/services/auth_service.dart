@@ -4,7 +4,7 @@ import 'package:http/http.dart' as http;
 
 class AuthService {
   // final String baseUrl = "https://chat-app-95gd.onrender.com";
-  final String baseUrl = "http://192.168.1.4:3000";
+  final String baseUrl = "http://192.168.1.10:3000";
   // Signup method
   Future<Map<String, dynamic>> signup(User user) async {
     print(user.toJsonSignup());

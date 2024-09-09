@@ -3,13 +3,17 @@ import 'dart:convert';
 import 'package:chat_app/model/chat_model.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:gap/gap.dart';
 import 'package:http/http.dart' as http;
 import '../services/socket_services.dart';
 
 // Provider for managing messages
-final messagesProvider = StateNotifierProvider<MessagesNotifier, List<Message>>((ref) {
+final messagesProvider =
+    StateNotifierProvider<MessagesNotifier, List<Message>>((ref) {
   return MessagesNotifier();
 });
+
+final followStatusProvider = StateProvider<bool>((ref) => false);
 
 final typingProvider = StateProvider<String?>((ref) => null);
 
@@ -36,18 +40,19 @@ class ChatScreen extends ConsumerStatefulWidget {
   final String receiverId;
 
   const ChatScreen({
-    Key? key,
+    super.key,
     required this.username,
     required this.onlineStatus,
     required this.senderId,
     required this.receiverId,
-  }) : super(key: key);
+  });
 
   @override
   ConsumerState<ChatScreen> createState() => _ChatScreenState();
 }
 
-class _ChatScreenState extends ConsumerState<ChatScreen> with TickerProviderStateMixin {
+class _ChatScreenState extends ConsumerState<ChatScreen>
+    with TickerProviderStateMixin {
   final TextEditingController _messageController = TextEditingController();
   late SocketService socketService;
   Timer? _typingTimer;
@@ -60,6 +65,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> with TickerProviderStat
     socketService = SocketService();
     _initializeSocketListeners();
     _fetchChatHistory();
+    _checkFollowStatus();
   }
 
   void _initializeSocketListeners() {
@@ -117,7 +123,8 @@ class _ChatScreenState extends ConsumerState<ChatScreen> with TickerProviderStat
   Future<void> _fetchChatHistory() async {
     try {
       final response = await http.get(
-        Uri.parse('https://chat-app-95gd.onrender.com/chat/history/${widget.senderId}/${widget.receiverId}'),
+        Uri.parse(
+            'https://chat-app-95gd.onrender.com/chat/history/${widget.senderId}/${widget.receiverId}'),
       );
 
       if (response.statusCode == 200) {
@@ -149,14 +156,109 @@ class _ChatScreenState extends ConsumerState<ChatScreen> with TickerProviderStat
     });
   }
 
+  Future<void> _checkFollowStatus() async {
+    try {
+      final response = await http.get(
+        Uri.parse(
+            'http://192.168.1.10:3000/status/check-follow-status/${widget.senderId}/${widget.receiverId}'),
+      );
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        ref.read(followStatusProvider.notifier).state = data['isFollowing'];
+      } else {
+        print(
+            'Failed to fetch follow status. Status code: ${response.statusCode}');
+      }
+    } catch (error) {
+      print('Error fetching follow status: $error');
+    }
+  }
+
+  Future<void> _toggleFollowStatus() async {
+    final isFollowing = ref.read(followStatusProvider);
+
+    final url =
+        'http://192.168.1.10:3000/status/${isFollowing ? 'unfollow' : 'follow'}';
+
+    final body = json.encode({
+      'userId': widget.senderId,
+      'followId': widget.receiverId,
+      'unfollowId': widget.receiverId, // Add this line
+    });
+
+    print('Sending request to: $url');
+    print('Request body: $body');
+
+    try {
+      final response = await http.post(
+        Uri.parse(url),
+        body: body,
+        headers: {'Content-Type': 'application/json'},
+      );
+
+      print('Response status code: ${response.statusCode}');
+      print('Response body: ${response.body}');
+
+      if (response.statusCode == 200) {
+        ref.read(followStatusProvider.notifier).state = !isFollowing;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+              content: Text(isFollowing
+                  ? 'Unfollowed successfully'
+                  : 'Followed successfully')),
+        );
+      } else {
+        final errorMessage = json.decode(response.body)['error'] ??
+            'Failed to toggle follow status';
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(errorMessage)),
+        );
+      }
+    } catch (error) {
+      print('Error toggling follow status: $error');
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('An error occurred. Please try again.')),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final messages = ref.watch(messagesProvider);
     final typingUser = ref.watch(typingProvider);
+    final isFollowing = ref.watch(followStatusProvider);
 
     return Scaffold(
       appBar: AppBar(
         title: Text('Chat with ${widget.username}'),
+        actions: [
+          Container(
+            margin: const EdgeInsets.only(right: 10),
+            child: CircleAvatar(
+              backgroundColor: widget.onlineStatus ? Colors.green : Colors.grey,
+              radius: 8,
+            ),
+          ),
+          const Gap(20),
+          ElevatedButton(
+            style: ButtonStyle(
+              backgroundColor: WidgetStateProperty.all(Colors.blueAccent),
+              shape: WidgetStateProperty.all(
+                RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(20),
+                ),
+              ),
+            ),
+            onPressed: _toggleFollowStatus,
+            child: Text(
+              isFollowing ? 'Unfollow' : 'Follow',
+              style: const TextStyle(
+                color: Colors.white,
+              ),
+            ),
+          ),
+        ],
       ),
       body: Column(
         children: [
@@ -195,9 +297,9 @@ class _ChatScreenState extends ConsumerState<ChatScreen> with TickerProviderStat
           children: [
             Text(
               '$typingUser is typing',
-              style: TextStyle(color: Colors.black54),
+              style: const TextStyle(color: Colors.black54),
             ),
-            SizedBox(width: 5),
+            const SizedBox(width: 5),
             _buildTypingDots(),
           ],
         ),
@@ -297,7 +399,9 @@ class _ChatScreenState extends ConsumerState<ChatScreen> with TickerProviderStat
     socketService.off('typing');
     _messageController.dispose();
     _typingTimer?.cancel();
-    _animationControllers.forEach((controller) => controller.dispose());
+    for (var controller in _animationControllers) {
+      controller.dispose();
+    }
     _scrollController.dispose();
     super.dispose();
   }

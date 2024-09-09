@@ -38,7 +38,6 @@ dependencies:
   gap: null
   http: null
   mixpanel_flutter: null
-  onesignal_flutter: null
   shared_preferences: null
   socket_io_client: null
   flutter_local_notifications:
